@@ -1,10 +1,10 @@
 // You can import Ionicons from @expo/vector-icons if you use Expo or
 // react-native-vector-icons/Ionicons otherwise.
 import * as React from 'react';
-import { Text, View, StyleSheet, ScrollView, Image, TextInput, Button, TouchableOpacity, Alert } from 'react-native';
+import { Text, View, ScrollView,TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useIsFocused, useNavigation } from '@react-navigation/native';
 import { Card, Icon } from '@rneui/themed';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -12,23 +12,85 @@ import { useCallback } from 'react';
 import { useState } from 'react';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
+
 
 //*Componente de la pantalla principal
-function HomeScreen() {
+function HomeScreen({ navigation }) {
+
+  const isFocused = useIsFocused();
+
+  //*Uses states
+  const [dataCard, setDataCard] = useState([]);
+  const [balance, setBalance] = useState(0);
+  const [incomes, setIncomes] = useState(0);
+  const [expensives, setExpensives] = useState(0);
+
+  //*Obtener todos los registros del almacenamiento local
+  const handleLoad = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('@form_key');
+      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    } catch (e) {
+      //* Capturar y manejar cualquier error que pueda ocurrir
+      console.error(e);
+    }
+  };
+
+  //*eliminar todos los registros
+  const handleClear = async () => {
+    try {
+      await AsyncStorage.removeItem("@form_key");
+      console.log("¡Los datos se han eliminado con éxito!");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  //*Obtener los registros cuando se seleccionala pantalla home
+  useEffect(() => {
+    if (isFocused) {
+      //*Logica de carga de la pantalla
+      const getData = async () => {
+        const data = await handleLoad();
+
+        if (data) {
+          //*Calcular el balance tota, ingresos y egresos
+          let balance = 0;
+          let incomes = 0;
+          let expensives = 0;
+          data.forEach(item => {
+            const cantidad = Number(item.cantidad);
+            if (item.movimiento === 'Ingreso') {
+              balance += cantidad;
+              incomes += cantidad;
+            } else if (item.movimiento === 'Egreso') {
+              balance -= cantidad;
+              expensives += cantidad;
+            }
+          });
+          //*Asignar valores
+          setBalance(balance);
+          setIncomes(incomes);
+          setExpensives(expensives);
+          setDataCard(data);
+        }
+
+      };
+      //*Ejecutar la funcion de carga de valores
+      getData();
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: "Cashy"
+    });
+  }, [navigation]);
+
 
   return (
     <View style={styles.textContent}>
-      {/* Bienvenido */}
-      <Text
-        style={{
-          fontFamily: "Poppins-Bold",
-          fontSize: 30,
-          paddingTop: 30,
-          paddingLeft: 20,
-        }}
-      >
-        !Bienvenido! 👋
-      </Text>
       {/* Balance total */}
       <Text
         style={{
@@ -40,6 +102,7 @@ function HomeScreen() {
       >
         Balance total
       </Text>
+
       {/* Card de balance total */}
       <Card
         //*Estilos del card
@@ -55,9 +118,10 @@ function HomeScreen() {
             fontFamily: "Poppins-Medium",
           }}
         >
-          $66699
+          ${balance}
         </Text>
       </Card>
+
       {/* Cards de ingresos y egresos */}
       <View style={styles.twoColumns}>
         {/* Card de total de ingresos */}
@@ -89,7 +153,7 @@ function HomeScreen() {
               textAlign: "center",
             }}
           >
-            $666
+            ${incomes}
           </Text>
         </Card>
         {/* Card de total de egresos */}
@@ -122,94 +186,100 @@ function HomeScreen() {
               textAlign: "center",
             }}
           >
-            $ 666
+            ${expensives}
           </Text>
         </Card>
       </View>
 
       {/* Registros*/}
-      {/* Ultimos registros*/}
-      <Text
-        style={{
-          paddingTop: 20,
-          paddingLeft: 20,
-          fontSize: 30,
-          fontFamily: "Poppins-Bold",
-        }}
-      >
-        Últimos registros
-      </Text>
+      {dataCard.length > 0 ? (
+        <>
+        {/* Ultimos registros*/}
+          <Text
+            style={{
+              paddingTop: 20,
+              paddingLeft: 20,
+              fontSize: 20,
+              fontFamily: "Poppins-Bold",
+            }}
+          >
+            Últimos registros
+          </Text>
+        {/* lista de registros */}
+          <ScrollView
+            style={{
+              width: "100%",
+            }}
+          >
+            {/*Carta de ingresos*/}
+            {dataCard &&
+              dataCard.map((item, index) => (
+                <Card
+                  containerStyle={{
+                    borderRadius: 10,
+                  }}
+                  key={index}
+                >
+                  <View style={styles.cardContent}>
+                    <Icon
+                      name={
+                        item.movimiento == "Ingreso"
+                          ? "cash-plus"
+                          : "cash-minus"
+                      }
+                      type="material-community"
+                      size={40}
+                      color={item.movimiento == "Ingreso" ? "green" : "red"}
+                    />
+                    <View style={styles.textContainer}>
+                      <Text style={styles.title}>{item.categoria}</Text>
+                      <Text style={{ fontFamily: "Poppins-Medium" }}>
+                        {item.comentario}
+                      </Text>
+                    </View>
+                    <View style={styles.amountContainer}>
+                      <Text
+                        style={
+                          item.movimiento == "Ingreso"
+                            ? styles.amountExpense
+                            : styles.amountIncome
+                        }
+                      >
+                        {item.movimiento == "Ingreso" ? "+" : "-"}$
+                        {item.cantidad}
+                      </Text>
 
-      {/* lista de registros */}
-      <ScrollView
-        style={{
-          width: "100%",
-        }}
-      >
-        {/*Carta de egresos*/}
-        <Card>
-          <View style={styles.cardContent}>
-            <Icon
-              name="cash-minus"
-              type="material-community"
-              size={40}
-              color={"red"}
-            />
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>Alimentos y bebidas</Text>
-              <Text
-                style={{
-                  fontFamily: "Poppins-Medium",
-                }}
-              >
-                Comida semana
-              </Text>
-            </View>
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountIncome}>-$1,000</Text>
-            </View>
-          </View>
-        </Card>
-
-        {/*Carta de ingresos*/}
-        <Card>
-          <View style={styles.cardContent}>
-            <Icon
-              name="cash-plus"
-              type="material-community"
-              size={40}
-              color={"green"}
-            />
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>Salario</Text>
-              <Text>Quincena</Text>
-            </View>
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountExpense}>+$7,000</Text>
-            </View>
-          </View>
-        </Card>
-
-        <Card>
-          <View style={styles.cardContent}>
-            <Icon
-              name="cash-plus"
-              type="material-community"
-              size={40}
-              color={"red"}
-            />
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>Alimentos y bebidas</Text>
-              <Text>Comida semana</Text>
-            </View>
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountIncome}>-$1,000</Text>
-            </View>
-          </View>
-        </Card>
-
-      </ScrollView>
-
+                      <Text style={{ fontFamily: "Poppins-Medium" }}>
+                        {new Date(item.fecha + "T00:00:00").toLocaleDateString(
+                          "es-MX",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+                </Card>
+              ))}
+          </ScrollView>
+        </>
+      ) : (
+        <>
+        {/*Sin registros...*/}
+          <Text
+            style={{
+              paddingTop: 20,
+              paddingLeft: 20,
+              fontSize: 30,
+              fontFamily: "Poppins-Bold",
+            }}
+          >
+            Sin registros...
+          </Text>
+        </>
+      )}
     </View>
   );
 }
@@ -217,12 +287,17 @@ function HomeScreen() {
 //*Componente del formulario para añadir gastos e ingresos
 function AddScreen() {
 
-  const [formValues, setFormValues] = useState({
+  let defaultValues = {
     movimiento:'Egreso',
     cantidad: '',
     categoria: '',
     comentario: '',
-  });
+    fecha:'',
+  }
+
+  const [formValues, setFormValues] = useState(defaultValues);
+
+  const navigation = useNavigation();
 
   const categoriasEgresos = [
     'Alimentos y bebidas',
@@ -266,6 +341,12 @@ function AddScreen() {
   
       //* Agregar los nuevos datos del formulario
       if (formValues) {
+
+        const today = new Date();
+        const date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+
+        formValues.fecha = date;
+
         existingData.push(formValues);
 
         //* Guardar los datos actualizados en AsyncStorage
@@ -275,7 +356,16 @@ function AddScreen() {
         Alert.alert(
           "Registro exitoso",
           "¡Tu registro se ha completado con éxito!",
-          [{ text: "OK"}],
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                navigation.navigate('Inicio');
+                setFormValues(defaultValues);
+
+              }
+            }
+          ],
           { cancelable: false }
         );
       } else {
@@ -287,129 +377,110 @@ function AddScreen() {
   };
   
 
-  const handleLoad = async () => {
-    try {
-      const jsonValue = await AsyncStorage.getItem('@form_key');
-      return jsonValue != null ? JSON.parse(jsonValue) : null;
-    } catch (e) {
-      //* Capturar y manejar cualquier error que pueda ocurrir
-      console.error(e);
-    }
-  };
-
-  const printData = async () => {
-    const data = await handleLoad();
-    console.log(data);
-  };
-  
-  printData();
-
-
   return (
     <View style={styles.containerForm}>
-      {/*Categoria*/}
-      <Text
-        style={{
-          fontFamily: "Poppins-Medium",
-          fontSize: 20,
-          paddingTop: 30,
-        }}
-      >
-        Tipo de movimiento
-      </Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={formValues.movimiento}
-          onValueChange={(value) => handleInputChange("movimiento", value)}
+      <ScrollView>
+        {/*Categoria*/}
+        <Text
+          style={{
+            fontFamily: "Poppins-Medium",
+            fontSize: 20,
+            paddingTop: 30,
+          }}
         >
-          {movimientos.map((movimiento) => (
-            <Picker.Item
-              key={movimiento}
-              label={movimiento}
-              value={movimiento}
-              style={{ fontFamily: "Poppins-Bold" }}
-            />
-          ))}
-        </Picker>
-      </View>
+          Tipo de movimiento
+        </Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={formValues.movimiento}
+            onValueChange={(value) => handleInputChange("movimiento", value)}
+          >
+            {movimientos.map((movimiento) => (
+              <Picker.Item
+                key={movimiento}
+                label={movimiento}
+                value={movimiento}
+                style={{ fontFamily: "Poppins-Bold" }}
+              />
+            ))}
+          </Picker>
+        </View>
 
-      {/* Cantidad */}
-      <Text
-        style={{
-          fontFamily: "Poppins-Medium",
-          fontSize: 20,
-          paddingTop: 30,
-        }}
-      >
-        Cantidad
-      </Text>
-      <TextInput
-        style={styles.inputAmount}
-        placeholder="$0.00"
-        value={formValues.cantidad}
-        onChangeText={(value) => handleInputChange("cantidad", value)}
-        keyboardType='number-pad'
-      />
-
-      {/*Categorias*/}
-      <Text
-        style={{
-          fontFamily: "Poppins-Medium",
-          fontSize: 20,
-          paddingTop: 30,
-        }}
-      >
-        Selecciona una categoria
-      </Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={formValues.categoria}
-          onValueChange={(value) => handleInputChange("categoria", value)}
+        {/* Cantidad */}
+        <Text
+          style={{
+            fontFamily: "Poppins-Medium",
+            fontSize: 20,
+            paddingTop: 30,
+          }}
         >
-          {/* Mostrar las opciones en base al movimiento seleccionado */}
-          <Picker.Item label="Selecciona una opción" value={null} />
-          {formValues.movimiento == "Ingreso"
-            ? categoriasIngresos.map((categoria) => (
-                <Picker.Item
-                  key={categoria}
-                  label={categoria}
-                  value={categoria}
-                />
-              ))
-            : categoriasEgresos.map((categoria) => (
-                <Picker.Item
-                  key={categoria}
-                  label={categoria}
-                  value={categoria}
-                />
-              ))}
-        </Picker>
-      </View>
+          Cantidad
+        </Text>
+        <TextInput
+          style={styles.inputAmount}
+          placeholder="$0.00"
+          value={formValues.cantidad}
+          onChangeText={(value) => handleInputChange("cantidad", value)}
+          keyboardType="number-pad"
+        />
 
-      {/* Comentario */}
-      <Text
-        style={{
-          fontFamily: "Poppins-Medium",
-          fontSize: 20,
-          paddingTop: 30,
-        }}
-      >
-        Agregar un comentario (opcional)
-      </Text>
-      <TextInput
-        style={styles.inputComment}
-        placeholder="Comentario"
-        value={formValues.comentario}
-        onChangeText={(value) => handleInputChange("comentario", value)}
-      />
+        {/*Categorias*/}
+        <Text
+          style={{
+            fontFamily: "Poppins-Medium",
+            fontSize: 20,
+            paddingTop: 30,
+          }}
+        >
+          Selecciona una categoria
+        </Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={formValues.categoria}
+            onValueChange={(value) => handleInputChange("categoria", value)}
+          >
+            {/* Mostrar las opciones en base al movimiento seleccionado */}
+            <Picker.Item label="Selecciona una opción" value={null} />
+            {formValues.movimiento == "Ingreso"
+              ? categoriasIngresos.map((categoria) => (
+                  <Picker.Item
+                    key={categoria}
+                    label={categoria}
+                    value={categoria}
+                  />
+                ))
+              : categoriasEgresos.map((categoria) => (
+                  <Picker.Item
+                    key={categoria}
+                    label={categoria}
+                    value={categoria}
+                  />
+                ))}
+          </Picker>
+        </View>
 
-      {/* Boton de añadir */}
-      <TouchableOpacity
-        style={styles.buttonForm}
-        onPress={handleCreate}
-      >
-        <Text style={styles.buttonText}>Agregar</Text>
-      </TouchableOpacity>
+        {/* Comentario */}
+        <Text
+          style={{
+            fontFamily: "Poppins-Medium",
+            fontSize: 20,
+            paddingTop: 30,
+          }}
+        >
+          Agregar un comentario (opcional)
+        </Text>
+        <TextInput
+          style={styles.inputComment}
+          placeholder="Comentario"
+          value={formValues.comentario}
+          onChangeText={(value) => handleInputChange("comentario", value)}
+        />
+
+        {/* Boton de añadir */}
+        <TouchableOpacity style={styles.buttonForm} onPress={handleCreate}>
+          <Text style={styles.buttonText}>Agregar</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
@@ -418,11 +489,13 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
 
+  //*Cargar fuentes externas
   const [fontsLoaded] = useFonts({
     'Poppins-Bold': require('./assets/fonts/Poppins-Bold.ttf'),
     'Poppins-Medium': require('./assets/fonts/Poppins-Medium.ttf'),
   });
 
+  //*Logica para asegurarse que las fuentes esten cargadas
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -440,9 +513,9 @@ export default function App() {
             tabBarIcon: ({ focused, color, size }) => {
               let iconName;
 
-              if (route.name === "Home") {
+              if (route.name === "Inicio") {
                 iconName = "home";
-              } else if (route.name === "Add") {
+              } else if (route.name === "Agregar") {
                 iconName = "add-circle-sharp";
               }
 
@@ -450,19 +523,21 @@ export default function App() {
               return <Ionicons name={iconName} size={size} color={color} />;
             },
             //Configuracion de colores
-            tabBarActiveTintColor: "green",
+            tabBarActiveTintColor: "black",
             tabBarInactiveTintColor: "gray",
           })}
         >
           {/*Elementos visualez*/}
-          <Tab.Screen name="Home" component={HomeScreen}  />
-          <Tab.Screen name="Add" component={AddScreen} />
+          <Tab.Screen name="Inicio" component={HomeScreen}  />
+          <Tab.Screen name="Agregar" component={AddScreen} />
         </Tab.Navigator>
       </NavigationContainer>
   );
 }
 
+//*Estilos
 const styles = {
+  //*Estilos generales
   textContent: {
     flex: 1,
     justifyContent: "center",
@@ -472,7 +547,7 @@ const styles = {
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  //*Estilos de la lista de registros
+  //*Lista de registros
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
@@ -484,23 +559,23 @@ const styles = {
   amountContainer: {
     alignItems: "flex-end",
   },
-  //*titulo de lista de registro
+  //?titulo de lista de registro
   title: {
     fontSize: 20,
     fontFamily: "Poppins-Bold",
   },
-  //*monto del registro
+  //?monto del registro de ingreso
   amountIncome: {
     fontSize: 25,
     color: "red",
     fontFamily: "Poppins-Medium",
   },
+  //?monto del registro de egreso
   amountExpense: {
     fontSize: 25,
     color: "green",
     fontFamily: "Poppins-Medium",
   },
-
   //*Estilos del formulario para añadir registros
   containerForm: {
     padding: 20,
