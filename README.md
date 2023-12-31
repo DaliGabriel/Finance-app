@@ -26,4 +26,8 @@ A continuación, se muestran dos capturas de pantalla de la aplicación:
 
 Esta aplicación es una herramienta útil para llevar un control de tus finanzas personales. Te permite tener una visión clara de tus ingresos y egresos, y mantener un registro de todos tus movimientos financieros.
 
+## Descarga la aplicación
+
+🤖 Aplicación Android: [Descargar APK](https://expo.dev/artifacts/eas/vQugTmYHVf2dffn6yXxhPz.apk)
+
 
