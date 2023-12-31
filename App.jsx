@@ -1,7 +1,7 @@
 // You can import Ionicons from @expo/vector-icons if you use Expo or
 // react-native-vector-icons/Ionicons otherwise.
 import * as React from 'react';
-import { Text, View, StyleSheet, ScrollView, Image, TextInput, Button, TouchableOpacity } from 'react-native';
+import { Text, View, StyleSheet, ScrollView, Image, TextInput, Button, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useCallback } from 'react';
 import { useState } from 'react';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 //*Componente de la pantalla principal
 function HomeScreen() {
@@ -145,14 +146,24 @@ function HomeScreen() {
           width: "100%",
         }}
       >
-
         {/*Carta de egresos*/}
         <Card>
           <View style={styles.cardContent}>
-            <Icon name="cash-plus" type="material-community" size={40}  color={'red'}/>
+            <Icon
+              name="cash-minus"
+              type="material-community"
+              size={40}
+              color={"red"}
+            />
             <View style={styles.textContainer}>
               <Text style={styles.title}>Alimentos y bebidas</Text>
-              <Text>Comida semana</Text>
+              <Text
+                style={{
+                  fontFamily: "Poppins-Medium",
+                }}
+              >
+                Comida semana
+              </Text>
             </View>
             <View style={styles.amountContainer}>
               <Text style={styles.amountIncome}>-$1,000</Text>
@@ -163,7 +174,12 @@ function HomeScreen() {
         {/*Carta de ingresos*/}
         <Card>
           <View style={styles.cardContent}>
-            <Icon name="cash-minus" type="material-community" size={40} color={'green'} />
+            <Icon
+              name="cash-plus"
+              type="material-community"
+              size={40}
+              color={"green"}
+            />
             <View style={styles.textContainer}>
               <Text style={styles.title}>Salario</Text>
               <Text>Quincena</Text>
@@ -176,7 +192,12 @@ function HomeScreen() {
 
         <Card>
           <View style={styles.cardContent}>
-            <Icon name="cash-plus" type="material-community" size={40}  color={'red'}/>
+            <Icon
+              name="cash-plus"
+              type="material-community"
+              size={40}
+              color={"red"}
+            />
             <View style={styles.textContainer}>
               <Text style={styles.title}>Alimentos y bebidas</Text>
               <Text>Comida semana</Text>
@@ -188,6 +209,7 @@ function HomeScreen() {
         </Card>
 
       </ScrollView>
+
     </View>
   );
 }
@@ -196,12 +218,13 @@ function HomeScreen() {
 function AddScreen() {
 
   const [formValues, setFormValues] = useState({
+    movimiento:'Egreso',
     cantidad: '',
     categoria: '',
     comentario: '',
   });
 
-  const categorias = [
+  const categoriasEgresos = [
     'Alimentos y bebidas',
     'Salud e higiene',
     'Transporte',
@@ -211,6 +234,20 @@ function AddScreen() {
     'Otros gastos'
   ];
 
+  const  categoriasIngresos = [
+    'Salario',
+    'Regalo',
+    'Venta',
+    'Inversión',
+    'Comisiones',
+    'Otros ingresos'
+  ];
+
+  const movimientos = [
+    'Ingreso',
+    'Egreso',
+  ];
+
   const handleInputChange = (name, value) => {
     setFormValues({
       ...formValues,
@@ -218,8 +255,85 @@ function AddScreen() {
     });
   };
 
+  const handleCreate = async () => {
+    try {
+      //* Recuperar los datos existentes
+      const jsonValue = await AsyncStorage.getItem('@form_key');
+      let existingData = jsonValue ? JSON.parse(jsonValue) : [];
+  
+      //* Verificar si existingData es un array, si no, asignarle un array vacío
+      existingData = Array.isArray(existingData) ? existingData : [];
+  
+      //* Agregar los nuevos datos del formulario
+      if (formValues) {
+        existingData.push(formValues);
+
+        //* Guardar los datos actualizados en AsyncStorage
+        await AsyncStorage.setItem("@form_key", JSON.stringify(existingData));
+
+        //* Mostrar alerta de confirmación
+        Alert.alert(
+          "Registro exitoso",
+          "¡Tu registro se ha completado con éxito!",
+          [{ text: "OK"}],
+          { cancelable: false }
+        );
+      } else {
+        console.warn('formValues es null o undefined. No se ha agregado ningún dato.');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  
+
+  const handleLoad = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('@form_key');
+      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    } catch (e) {
+      //* Capturar y manejar cualquier error que pueda ocurrir
+      console.error(e);
+    }
+  };
+
+  const printData = async () => {
+    const data = await handleLoad();
+    console.log(data);
+  };
+  
+  printData();
+
+
   return (
     <View style={styles.containerForm}>
+      {/*Categoria*/}
+      <Text
+        style={{
+          fontFamily: "Poppins-Medium",
+          fontSize: 20,
+          paddingTop: 30,
+        }}
+      >
+        Tipo de movimiento
+      </Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={formValues.movimiento}
+          onValueChange={(value) => handleInputChange("movimiento", value)}
+        >
+          {movimientos.map((movimiento) => (
+            <Picker.Item
+              key={movimiento}
+              label={movimiento}
+              value={movimiento}
+              style={{ fontFamily: "Poppins-Bold" }}
+            />
+          ))}
+        </Picker>
+      </View>
+
+      {/* Cantidad */}
       <Text
         style={{
           fontFamily: "Poppins-Medium",
@@ -234,7 +348,10 @@ function AddScreen() {
         placeholder="$0.00"
         value={formValues.cantidad}
         onChangeText={(value) => handleInputChange("cantidad", value)}
+        keyboardType='number-pad'
       />
+
+      {/*Categorias*/}
       <Text
         style={{
           fontFamily: "Poppins-Medium",
@@ -249,12 +366,27 @@ function AddScreen() {
           selectedValue={formValues.categoria}
           onValueChange={(value) => handleInputChange("categoria", value)}
         >
-          {categorias.map((categoria) => (
-            <Picker.Item key={categoria} label={categoria} value={categoria} />
-          ))}
+          {/* Mostrar las opciones en base al movimiento seleccionado */}
+          <Picker.Item label="Selecciona una opción" value={null} />
+          {formValues.movimiento == "Ingreso"
+            ? categoriasIngresos.map((categoria) => (
+                <Picker.Item
+                  key={categoria}
+                  label={categoria}
+                  value={categoria}
+                />
+              ))
+            : categoriasEgresos.map((categoria) => (
+                <Picker.Item
+                  key={categoria}
+                  label={categoria}
+                  value={categoria}
+                />
+              ))}
         </Picker>
       </View>
 
+      {/* Comentario */}
       <Text
         style={{
           fontFamily: "Poppins-Medium",
@@ -262,7 +394,7 @@ function AddScreen() {
           paddingTop: 30,
         }}
       >
-        Agregar un comentario
+        Agregar un comentario (opcional)
       </Text>
       <TextInput
         style={styles.inputComment}
@@ -271,11 +403,10 @@ function AddScreen() {
         onChangeText={(value) => handleInputChange("comentario", value)}
       />
 
+      {/* Boton de añadir */}
       <TouchableOpacity
         style={styles.buttonForm}
-        onPress={() => {
-          console.log(formValues)
-        }}
+        onPress={handleCreate}
       >
         <Text style={styles.buttonText}>Agregar</Text>
       </TouchableOpacity>
@@ -356,16 +487,18 @@ const styles = {
   //*titulo de lista de registro
   title: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: "Poppins-Bold",
   },
   //*monto del registro
   amountIncome: {
     fontSize: 25,
     color: "red",
+    fontFamily: "Poppins-Medium",
   },
   amountExpense: {
     fontSize: 25,
     color: "green",
+    fontFamily: "Poppins-Medium",
   },
 
   //*Estilos del formulario para añadir registros
@@ -379,6 +512,7 @@ const styles = {
     marginBottom: 10,
     paddingLeft: 10,
     borderRadius: 5,
+    fontFamily: "Poppins-Medium",
   },
   pickerContainer: {
     borderColor: "gray",
@@ -393,12 +527,13 @@ const styles = {
     marginBottom: 10,
     paddingLeft: 10,
     borderRadius: 5,
+    fontFamily: "Poppins-Medium",
   },
   buttonForm: {
     backgroundColor: "black",
     padding: 10,
     borderRadius: 20,
-    marginTop: 50,
+    marginTop: 100,
     alignItems: "center",
   },
   buttonText: {
@@ -406,5 +541,6 @@ const styles = {
     fontSize: 20,
     paddingTop:5,
     paddingBottom:5,
+    fontFamily: "Poppins-Bold",
   },
 };
