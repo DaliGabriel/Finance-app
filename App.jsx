@@ -130,7 +130,7 @@ function HomeScreen({ navigation }) {
             borderColor: "green",
             borderWidth: 2,
             borderRadius: 8,
-            width: "30%",
+            width: "40%",
           }}
         >
           <Icon name="arrow-upward" color="green" />
@@ -162,7 +162,7 @@ function HomeScreen({ navigation }) {
             borderColor: "red",
             borderWidth: 2,
             borderRadius: 8,
-            width: "30%",
+            width: "40%",
           }}
         >
           <Icon name="arrow-downward" color="red" />
@@ -561,7 +561,7 @@ const styles = {
   },
   //?titulo de lista de registro
   title: {
-    fontSize: 20,
+    fontSize: 15,
     fontFamily: "Poppins-Bold",
   },
   //?monto del registro de ingreso
