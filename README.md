@@ -28,7 +28,7 @@ Esta aplicación es una herramienta útil para llevar un control de tus finanzas
 
 ## Descarga la aplicación
 
-🤖 Aplicación Android: [Descargar APK](https://expo.dev/artifacts/eas/f8JKrhvHLLtvw9wpwNoqGn.apk)
+🤖 Aplicación Android: [Descargar APK](https://expo.dev/artifacts/eas/nt2i7VevfwvtuQeeRvjvGo.apk)
 
 
 
